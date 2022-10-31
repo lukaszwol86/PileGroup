@@ -47,7 +47,13 @@ def single_point_crossover(a: Genome, b: Genome) -> Tuple[Genome, Genome]:
 def mutation(genome: Genome, num: int = 1, probability: float = 0.5) -> Genome:
     for _ in range(num):
         index = randrange(len(genome))
-        genome[index] = genome[index] if random() > probability else abs(genome[index] - 1)
+        if random() > probability:
+            genome[index] = genome[index]
+        else:
+            if index%2==0:
+                genome[index] = abs(genome[index] - 1)
+            else:
+                genome[index] = choices([0, 1, 2, 3])[0]
     return genome
 
 
@@ -64,7 +70,7 @@ def selection_pair(population: Population, fitness_func: FitnessFunc) -> Populat
 
 
 def sort_population(population: Population, fitness_func: FitnessFunc) -> Population:
-    return sorted(population, key=fitness_func, reverse=True)
+    return sorted(population, key=fitness_func, reverse=False)
 
 
 def genome_to_string(genome: Genome) -> str:
@@ -135,7 +141,7 @@ def run_evolution(
     population = populate_func()
 
     for i in range(generation_limit):
-        population = sorted(population, key=lambda genome: fitness_func(genome), reverse=True)
+        population = sorted(population, key=lambda genome: fitness_func(genome), reverse=False)
 
         if printer is not None:
             printer(population, i, fitness_func)
@@ -160,7 +166,7 @@ def run_evolution(
 
 
 Piles_grp = Optimize(P_max=2000,P_min=-1500,def_lim=16)
-Piles_grp.Generate_allowed_piles(B_min=-10, B_max=10, L_min=-4, L_max=4, dx=2, dy=2, d_edge=0.6,N=4,L=30)
+Piles_grp.Generate_allowed_piles(B_min=-6, B_max=10, L_min=-5, L_max=5, dx=2, dy=2, d_edge=0.6,N=4,L=30)
 Results = PileGroup()
 Results.pile_parameter(Ep=33 * 10 ** 9, Gp=12 * 10 ** 9, Ap=109378 * 10 ** -6, Jp=58791 * 10 ** (4 - 4 * 3), m=0,
                        soil_type="cohesive", kd=4615 * 1000)
@@ -176,15 +182,21 @@ Results.import_piles(Piles_grp.all_piles)
 
 Results.piles_matrix()
 Results.forces()
-
-
-
-population, generations = run_evolution(
-    populate_func=partial(generate_population, size=100, genome_length=2*len(Piles_grp.all_piles)),
-    fitness_func=partial(fitness),
-    generation_limit=100
-)
 print(genom)
 print(fitness(genom))
 
+
+population, generations = run_evolution(
+    populate_func=partial(generate_population, size=25, genome_length=2*len(Piles_grp.all_piles)),
+    fitness_func=partial(fitness),
+    generation_limit=60
+)
+print(population[0])
+print(f'fitness {fitness(population[0])}')
+Piles_grp.Generate_piles(population[0])
+
+Results.import_piles(Piles_grp.piles)
+Results.piles.to_csv('final_piles.csv')
+print( Results.single_normal_forces())
+print(Results.single_deformation())
 print("--- %s seconds ---" % (time.time() - start_time))

@@ -28,7 +28,7 @@ class PileGroup():
     def single_load(self,input_loads):
         self.Loads = pd.read_csv(input_loads, delimiter=";")
         self.R = []
-        row = self.Loads.loc[0]
+        row = self.Loads.loc[1]
         r = np.array([row.Fx * 1000, row.Fy * 1000, row.Fz * 1000, row.Mx * 1000, row.My * 1000, row.Mz * 1000])
         self.R.append(r)
 
