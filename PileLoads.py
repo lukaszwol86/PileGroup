@@ -28,12 +28,12 @@ class PileGroup():
     def single_load(self,input_loads):
         self.Loads = pd.read_csv(input_loads, delimiter=";")
         self.R = []
-        row = self.Loads.loc[1]
+        row = self.Loads.loc[52]
         r = np.array([row.Fx * 1000, row.Fy * 1000, row.Fz * 1000, row.Mx * 1000, row.My * 1000, row.Mz * 1000])
         self.R.append(r)
 
     def input_piles(self,input_piles_pos):
-        self.piles = pd.read_csv(input_piles_pos, delimiter=";")
+        self.piles = pd.read_csv(input_piles_pos, delimiter=",")
 
     def import_piles(self,piles_df):
         self.piles = piles_df[piles_df['Acti']==1]

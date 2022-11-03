@@ -151,12 +151,19 @@ def run_evolution(
 
         next_generation = population[0:2]
 
-        for j in range(int(len(population) / 2) - 1):
+        for j in range(max(int((len(population) / 2 - 1)*.7),10)):
             parents = selection_func(population, fitness_func)
             offspring_a, offspring_b = crossover_func(parents[0], parents[1])
             offspring_a = mutation_func(offspring_a)
             offspring_b = mutation_func(offspring_b)
             next_generation += [offspring_a, offspring_b]
+
+#        for j in range(int(len(population) / 2) - 1):
+#            parents = selection_func(population, fitness_func)
+#            offspring_a, offspring_b = crossover_func(parents[0], parents[1])
+#            offspring_a = mutation_func(offspring_a)
+#            offspring_b = mutation_func(offspring_b)
+#            next_generation += [offspring_a, offspring_b]
 
         population = next_generation
 
@@ -165,7 +172,7 @@ def run_evolution(
 
 
 
-Piles_grp = Optimize(P_max=2000,P_min=-1500,def_lim=16)
+Piles_grp = Optimize(P_max=2000,P_min=-1500,def_lim=32)
 Piles_grp.Generate_allowed_piles(B_min=-6, B_max=10, L_min=-5, L_max=5, dx=2, dy=2, d_edge=0.6,N=4,L=30)
 Results = PileGroup()
 Results.pile_parameter(Ep=33 * 10 ** 9, Gp=12 * 10 ** 9, Ap=109378 * 10 ** -6, Jp=58791 * 10 ** (4 - 4 * 3), m=0,
@@ -187,7 +194,7 @@ print(fitness(genom))
 
 
 population, generations = run_evolution(
-    populate_func=partial(generate_population, size=25, genome_length=2*len(Piles_grp.all_piles)),
+    populate_func=partial(generate_population, size=50, genome_length=2*len(Piles_grp.all_piles)),
     fitness_func=partial(fitness),
     generation_limit=60
 )
