@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import math
-
+import openpyxl
 
 class PileGroup():
     np.set_printoptions(formatter={'float': '{: 0.2f}'.format})
@@ -24,6 +24,14 @@ class PileGroup():
         for index, row in self.Loads.iterrows():
             r = np.array([row.Fx * 1000, row.Fy * 1000, row.Fz * 1000, row.Mx * 1000, row.My * 1000, row.Mz * 1000])
             self.R.append(r)
+    def loads_from_excel(self,file_name, sheet_name, cells_range, load_comb):
+        df = pd.read_excel(file_name, sheet_name=sheet_name, usecols=cells_range, skiprows=1, engine='openpyxl')
+        df.dropna(inplace=True)
+        self.Loads = df.loc[df['Type'] == load_comb]
+        self.R = []
+        for index, row in self.Loads.iterrows():
+            r = np.array([row.Fx * 1000, row.Fy * 1000, row.Fz * 1000, row.Mx * 1000, row.My * 1000, row.Mz * 1000])
+            self.R.append(r)
 
     def single_load(self,input_loads):
         self.Loads = pd.read_csv(input_loads, delimiter=";")
@@ -33,7 +41,14 @@ class PileGroup():
         self.R.append(r)
 
     def input_piles(self,input_piles_pos):
-        self.piles = pd.read_csv(input_piles_pos, delimiter=",")
+        self.piles = pd.read_csv(input_piles_pos, delimiter=";")
+
+    def input_pile_geom_excel(self, file_name, sheet_name, cells_range):
+        df_piles = pd.read_excel(file_name, sheet_name=sheet_name, usecols=cells_range, skiprows=1, engine='openpyxl')
+        df_piles.dropna(inplace=True)
+        self.piles = df_piles
+
+
 
     def import_piles(self,piles_df):
         self.piles = piles_df[piles_df['Acti']==1]
@@ -113,6 +128,9 @@ class PileGroup():
             i+=1
 
     def forces(self):
+        self.df_pile_reactions = pd.DataFrame(columns=['LC', 'Pile', 'Vx', 'Vy', 'N', 'Mx', 'My', 'Mz'])
+        self.df_pile_deformations = pd.DataFrame(columns=['LC', 'Pile', 'ux', 'uy', 'uz', 'psi_x', 'psi_y', 'psi_z'])
+
         self.U = []
         self.DispP = np.zeros((len(self.Loads), len(self.piles), 6))
         self.ForcsP = np.zeros((len(self.Loads), len(self.piles), 6))
@@ -123,8 +141,46 @@ class PileGroup():
                 disp = np.matmul(dp.T, u)
                 force = np.matmul(self.Kp[n], disp) / 1000
                 # print(disp)
+                pile_force = {'LC': i+1 , 'Pile': n+1 , 'Vx':force[0], 'Vy':force[1], 'N':force[2], 'Mx':force[3], 'My':force[4], 'Mz':force[5]}
+                pile_displ = {'LC': i + 1, 'Pile': n + 1, 'ux': disp[0], 'uy': disp[1], 'uz': disp[2], 'psi_x': disp[3],
+                              'psi_y': disp[4], 'psi_z': disp[5]}
+                self.df_pile_reactions = self.df_pile_reactions.append(pile_force, ignore_index=True)
+                self.df_pile_deformations = self.df_pile_deformations.append(pile_displ, ignore_index=True)
                 self.DispP[i, n] = disp
                 self.ForcsP[i, n] = force
+
+
+    def reaction_summary(self):
+        self.force_summary = pd.pivot_table(data=self.df_pile_reactions, index=['Pile'], columns=['LC'], values=['N'])
+        self.df_pile_deformations['uxy'] = (self.df_pile_deformations['ux']**2 + self.df_pile_deformations['uy']**2)**0.5
+        self.displ_summary = pd.pivot_table(data=self.df_pile_deformations, index=['Pile'], columns=['LC'], values=['uxy'])
+
+    def export_to_excel(self, file_name, comb_name):
+        self.reaction_summary()
+        wb =  openpyxl.load_workbook(file_name)
+        if f'{comb_name}_force_summary' in wb.sheetnames:
+            ws = wb[f'{comb_name}_force_summary']
+            wb.remove(ws)
+        if f'{comb_name}_forces' in wb.sheetnames:
+            ws = wb[f'{comb_name}_forces']
+            wb.remove(ws)
+        if f'{comb_name}_displ_summary' in wb.sheetnames:
+            ws = wb[f'{comb_name}_displ_summary']
+            wb.remove(ws)
+        if f'{comb_name}_displacement' in wb.sheetnames:
+            ws = wb[f'{comb_name}_displacement']
+            wb.remove(ws)
+        wb.save(file_name)
+        wb.close()
+
+
+        with pd.ExcelWriter(file_name, mode='a') as writer:
+            self.force_summary.to_excel(writer, sheet_name=f'{comb_name}_force_summary')
+            self.df_pile_reactions.to_excel(writer, sheet_name=f'{comb_name}_forces')
+            self.displ_summary.to_excel(writer, sheet_name=f'{comb_name}_displ_summary')
+            self.df_pile_deformations.to_excel(writer, sheet_name=f'{comb_name}_displacement')
+
+
 
     def single_normal_forces(self):
         N_P_LC = np.zeros(len(self.piles))
