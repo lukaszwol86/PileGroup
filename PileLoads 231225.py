@@ -3,7 +3,6 @@ import pandas as pd
 import math
 import openpyxl
 
-
 class PileGroup():
     np.set_printoptions(formatter={'float': '{: 0.2f}'.format})
     def pile_parameter(self,Ep,Gp,Ap,Jp,m,soil_type,**kwarg):
@@ -217,94 +216,17 @@ class PileGroup():
         return deform
 
 
-    def export_to_cae(self,file_name,param_dict):
-        start_data = """<Indata>\n<Id>\n<Program>ec701</Program>\n<Version>2.1.4</Version>\n</Id>"""
-        load_start = "\n<Last>\n<Kraft>"
-        load_end = "\n</Kraft>\n</Last>"
-
-
-        loads = ''
-        i = 0
-        for index, row in self.Loads.iterrows():
-            Fx = row['Fx']
-            Fy = row['Fy']
-            Fz = row['Fz']
-            Mx = row['Mx']
-            My = row['My']
-            Mz = row['Mz']
-
-            load_temp = f'\n<Idx{i:03d}>\n<Smxd>{Mx:.1f}</Smxd>\n<Smyd>{My:.1f}</Smyd>\n<Smzd>{Mz:.1f}</Smzd>\n<Spxd>{Fx:.1f}</Spxd>\n<Spyd>{Fy:.1f}</Spyd>\n<Spzd>{Fz:.1f}</Spzd>\n</Idx{i:03d}>'
-            loads += load_temp
-            i += 1
-        nr_loads = i
-        pile_start = '\n<Pale>'
-
-        pile_end = '\n</Pale>'
-
-        pile_pos = ''
-        for index, row in self.piles.iterrows():
-
-            alfa = row['Angle']
-            lengd = row['L']
-            lutnig = row['N']
-            typ = int(row['Type']-1)
-            xkrd = row['x']
-            ykrd = row['y']
-            zkrd = row['z']
-            L = row['L']
-
-            pile_pos_temp = f'\n<Idx{index:03d}>\n<alpha>{alfa:.1f}</alpha>\n<lengd>{lengd:.1f}</lengd>\n<lutning>{lutnig:.1f}</lutning>\n<typ>{typ}</typ>\n<xkrd>{xkrd:.2f}</xkrd>\n<ykrd>{ykrd:.2f}</ykrd>\n<zkrd>{zkrd:.2f}</zkrd>\n</Idx{index:03d}>'
-            pile_pos += pile_pos_temp
-
-        pile_total = f'\n<antal>{index + 1}</antal>'
-
-        sbp = 0.9  # m space between piles
-        skp = 0.6  # m space to edge of foundation
-        pile_spacing = f'\n<avstand>\n<kant>{skp:.1f}</kant>\n<pale>{sbp:.1f}</pale>\n</avstand>'
-
-        if self.soil_type == "cohesive":
-            soil_prop = f'\n<mark>\n<Rad00>\n<GrTyp>K</GrTyp>\n<kd>{self.kd/1000:.0f}</kd>\n<nh>0</nh>\n</Rad00>\n</mark>'
-
-        elif self.soil_type == "friction":
-            soil_prop = f'\n<mark>\n<Rad00>\n<GrTyp>F</GrTyp>\n<kd>0</kd>\n<nh>{self.nh:.1f}</nh>\n</Rad00>\n</mark>'
-        else:
-            soil_prop = f'\n<mark>\n<Rad00>\n<GrTyp>I</GrTyp>\n<kd>0</kd>\n<nh>0</nh>\n</Rad00>\n</mark>'
-
-        param = '\n<param>\n<plan>N</plan>\n</param>'
-        platta = f"\n<platta>\n<xhoger>{param_dict['xhoger']:.2f}</xhoger>\n<xvanster>{param_dict['xvanster']:.2f}</xvanster>\n<ynere>{param_dict['ynere']:.2f}</ynere>\n<yuppe>{param_dict['yuppe']:.2f}</yuppe>\n</platta>"
-
-
-        snitkraft = f'\n<Snittkraft>\n<Antal>{nr_loads}</Antal>\n</Snittkraft>'
-        tvarsnitt = f"\n<Tvarsnitt>\n<Rad00>\n<Emodul>{(self.Ep / 10 ** 9):.1f}</Emodul>\n<Grupp>G</Grupp>\n<Insp>N</Insp>\n<Ix>{(self.Jp * 10 ** (12 - 8)):.4f}E+08</Ix>\n<Kv>0</Kv>\n<Lengd>{L:.1f}</Lengd>\n<Lfri>0</Lfri>\n<area>{(self.Ap * 10 ** (6)):.2f}</area>\n<bx>{param_dict['bx']:.2f}</bx>\n<by>{param_dict['by']:.2f}</by>\n<gmodul>{(self.Gp / 10 ** 9):.1f}</gmodul>\n</Rad00>\n<antal>1</antal>\n</Tvarsnitt>"
-
-        end_data = "\n</Indata>"
-        text = load_start + loads + load_end + pile_start + pile_pos + pile_total  + pile_spacing + soil_prop \
-                 +param +platta+ pile_end+ snitkraft + tvarsnitt + end_data
-        final_text = start_data + text.replace('.',',')
-        with open(file_name, "w") as file:
-            file.write(final_text)
-        print(f"File {file_name} is saved")
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
     Piles = PileGroup()
     Piles.pile_parameter(Ep=33*10**9,Gp=12*10**9,Ap=109378*10**-6,Jp=58791*10**(4-4*3),m=0,soil_type="cohesive",kd=4615*1000)
     Piles.loads('Loads.csv')
     Piles.input_piles('piles.csv')
-    Piles.export_to_cae('Support_1_ULS_test.xml',param_dict)
-
-    # Piles.piles_matrix()
-    # Piles.forces()
+    Piles.piles_matrix()
+    Piles.forces()
 
 
 
-    #print(Piles.normal_forces())
+    print(Piles.normal_forces())
 
 
 
