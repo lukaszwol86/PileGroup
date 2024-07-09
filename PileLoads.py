@@ -69,6 +69,7 @@ class PileGroup():
                 k[5, 5] = self.m * self.Gp * self.Jp / L
             elif self.soil_type == "cohesive":
                 Le = (4 * self.Ep * self.Jp / (self.kd*row.redu)) ** (1 / 4)
+                self.Le = Le
                 k[0, 0] = (self.m + 1) * 2 * self.Ep * self.Jp / Le ** 3
                 k[1, 1] = k[0, 0]
                 k[2, 2] = self.Ap * self.Ep / L
@@ -83,6 +84,7 @@ class PileGroup():
 
             elif self.soil_type == "friction":
                 Li = 1.8 * (self.Ep * self.Jp / (self.nh*row.redu)) ** (1 / 5)
+                self.Li = Li
                 k[0, 0] = (3 * self.m + 1) * 3 * self.Ep * self.Jp / Li ** 3
                 k[1, 1] = k[0, 0]
                 k[2, 2] = self.Ap * self.Ep / L
@@ -149,6 +151,19 @@ class PileGroup():
                 self.df_pile_deformations = self.df_pile_deformations.append(pile_displ, ignore_index=True)
                 self.DispP[i, n] = disp
                 self.ForcsP[i, n] = force
+
+
+        if self.soil_type== "friction":
+            self.df_pile_reactions['M_max'] = (self.df_pile_reactions['Vx'] ** 2 + self.df_pile_reactions[
+                'Vy'] ** 2) ** 0.5 * self.Li * 0.43
+
+        elif self.soil_type== "cohesive":
+            self.df_pile_reactions['M_max'] = (self.df_pile_reactions['Vx'] ** 2 + self.df_pile_reactions[
+                'Vy'] ** 2) ** 0.5*self.Le*0.32
+        else:
+            self.df_pile_reactions['M_max'] = (self.df_pile_reactions['Mx'] ** 2 + self.df_pile_reactions[
+                'My'] ** 2) ** 0.5
+
 
 
     def reaction_summary(self):
@@ -259,23 +274,25 @@ class PileGroup():
         pile_total = f'\n<antal>{index + 1}</antal>'
 
         sbp = 0.9  # m space between piles
-        skp = 0.6  # m space to edge of foundation
+        skp = 0.3  # m space to edge of foundation
         pile_spacing = f'\n<avstand>\n<kant>{skp:.1f}</kant>\n<pale>{sbp:.1f}</pale>\n</avstand>'
 
         if self.soil_type == "cohesive":
-            soil_prop = f'\n<mark>\n<Rad00>\n<GrTyp>K</GrTyp>\n<kd>{self.kd/1000:.0f}</kd>\n<nh>0</nh>\n</Rad00>\n</mark>'
+            soil_prop = f'\n<mark>\n<Rad00>\n<GrTyp>K</GrTyp>\n<kd>{self.kd/1000:.1f}</kd>\n<nh>0</nh>\n</Rad00>\n</mark>'
 
         elif self.soil_type == "friction":
             soil_prop = f'\n<mark>\n<Rad00>\n<GrTyp>F</GrTyp>\n<kd>0</kd>\n<nh>{self.nh:.1f}</nh>\n</Rad00>\n</mark>'
         else:
             soil_prop = f'\n<mark>\n<Rad00>\n<GrTyp>I</GrTyp>\n<kd>0</kd>\n<nh>0</nh>\n</Rad00>\n</mark>'
 
-        param = '\n<param>\n<plan>N</plan>\n</param>'
+        param = '\n<param>\n<antal>\n<lastkomb>0</lastkomb>\n</antal>\n<plan>N</plan>\n</param>'
+        #'\n<antal>\n<lastkomb>0</lastkomb>\n</antal>'
+
         platta = f"\n<platta>\n<xhoger>{param_dict['xhoger']:.2f}</xhoger>\n<xvanster>{param_dict['xvanster']:.2f}</xvanster>\n<ynere>{param_dict['ynere']:.2f}</ynere>\n<yuppe>{param_dict['yuppe']:.2f}</yuppe>\n</platta>"
 
 
         snitkraft = f'\n<Snittkraft>\n<Antal>{nr_loads}</Antal>\n</Snittkraft>'
-        tvarsnitt = f"\n<Tvarsnitt>\n<Rad00>\n<Emodul>{(self.Ep / 10 ** 9):.1f}</Emodul>\n<Grupp>G</Grupp>\n<Insp>N</Insp>\n<Ix>{(self.Jp * 10 ** (12 - 8)):.4f}E+08</Ix>\n<Kv>0</Kv>\n<Lengd>{L:.1f}</Lengd>\n<Lfri>0</Lfri>\n<area>{(self.Ap * 10 ** (6)):.2f}</area>\n<bx>{param_dict['bx']:.2f}</bx>\n<by>{param_dict['by']:.2f}</by>\n<gmodul>{(self.Gp / 10 ** 9):.1f}</gmodul>\n</Rad00>\n<antal>1</antal>\n</Tvarsnitt>"
+        tvarsnitt = f"\n<Tvarsnitt>\n<Rad00>\n<Emodul>{(self.Ep / 10 ** 9):.1f}</Emodul>\n<Grupp>G</Grupp>\n<Insp>N</Insp>\n<Ix>{(self.Jp * 10 ** (12 - 8)):.4f}E+08</Ix>\n<Kv>{param_dict['Kv']/1000:.3f}E+07</Kv>\n<Lengd>{L:.1f}</Lengd>\n<Lfri>0</Lfri>\n<area>{(self.Ap * 10 ** (6)):.2f}</area>\n<bx>{param_dict['bx']:.2f}</bx>\n<by>{param_dict['by']:.2f}</by>\n<gmodul>{(self.Gp / 10 ** 9):.1f}</gmodul>\n</Rad00>\n<antal>1</antal>\n</Tvarsnitt>"
 
         end_data = "\n</Indata>"
         text = load_start + loads + load_end + pile_start + pile_pos + pile_total  + pile_spacing + soil_prop \
